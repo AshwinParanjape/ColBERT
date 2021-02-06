@@ -87,14 +87,10 @@ class Arguments(ArgumentParser):
         for check in self.checks:
             check(args)
 
-    def parse_args(self, *args, **kwargs):
-        args = super().parse_args(*args, **kwargs)
-
-        self.check_arguments(args)
-
-
+    def distributed_init(self, args):
         args.nranks, args.distributed = distributed.init(args.rank)
 
+    def set_threads(self, args):
         args.nthreads = int(max(os.cpu_count(), faiss.omp_get_max_threads()) * 0.8)
         args.nthreads = max(1, args.nthreads // args.nranks)
 
@@ -103,8 +99,20 @@ class Arguments(ArgumentParser):
                           condition=(args.rank == 0))
             faiss.omp_set_num_threads(args.nthreads)
 
+    def parse(self, *args, **kwargs):
+        args = super().parse_args(*args, **kwargs)
+        self.check_arguments(args)
+
+        self.distributed_init(args)
+        self.set_threads(args)
+
+
         #Run.init(args.rank, args.root, args.experiment, args.run)
         #Run._log_args(args)
         #Run.info(args.input_arguments.__dict__, '\n')
 
+        return args
+
+    def parse_args(self, *args, **kwargs):
+        args = super().parse_args(*args, **kwargs)
         return args

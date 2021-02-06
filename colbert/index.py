@@ -21,16 +21,25 @@ def main():
 
     parser.add_argument('--chunksize', dest='chunksize', default=16.0, required=False, type=float)   # in GiBs
     Experiment.add_argument_group(parser)
-    args = parser.parse_args()
-    vargs = vars(args)
+    args = parser.parse()
+    vargs = {k:v for k, v in vars(args).items()}
     meticulous_args = {}
     for arg in ['project_directory', 'experiments_directory', 'experiment_id', 'description', 'resume', 'norecord']:
         if arg in vargs:
             meticulous_args[arg] = vargs[arg]
             del vargs[arg]
+    del vargs['rank']
     print(vargs)
+
     if args.rank < 1:
         experiment = Experiment(args=vargs, **meticulous_args)
+        args.index_root =  experiment.curexpdir
+    else:
+        args.index_root = os.path.join(args.experiments_directory, args.experiment_id)
+
+
+
+    print(args.index_root)
 
     args.index_path = os.path.join(args.index_root, args.index_name)
     assert not os.path.exists(args.index_path), args.index_path
