@@ -23,8 +23,9 @@ def main():
     Experiment.add_argument_group(parser)
     meticulous_args = Experiment.extract_meticulous_args(parser)
     args = parser.parse_args()
+    print(args)
     if args.rank < 1:
-        experiment = Experiment(args=args, **meticulous_args)
+        experiment = Experiment(args=vars(args), **meticulous_args)
 
     args.index_path = os.path.join(args.index_root, args.index_name)
     assert not os.path.exists(args.index_path), args.index_path
