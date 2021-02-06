@@ -92,7 +92,6 @@ class Arguments(ArgumentParser):
 
         self.check_arguments(args)
 
-        args.input_arguments = copy.deepcopy(args)
 
         args.nranks, args.distributed = distributed.init(args.rank)
 
