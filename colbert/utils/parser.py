@@ -5,18 +5,17 @@ import faiss
 from argparse import ArgumentParser
 
 import colbert.utils.distributed as distributed
-from colbert.utils.runs import Run
 from colbert.utils.utils import print_message, timestamp, create_directory
 
 
-class Arguments():
-    def __init__(self, description):
-        self.parser = ArgumentParser(description=description)
+class Arguments(ArgumentParser):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
         self.checks = []
 
-        self.add_argument('--root', dest='root', default='experiments')
-        self.add_argument('--experiment', dest='experiment', default='dirty')
-        self.add_argument('--run', dest='run', default=Run.name)
+        #self.add_argument('--root', dest='root', default='experiments')
+        #self.add_argument('--experiment', dest='experiment', default='dirty')
 
         self.add_argument('--local_rank', dest='rank', default=-1, type=int)
 
@@ -84,15 +83,13 @@ class Arguments():
         self.add_argument('--nprobe', dest='nprobe', default=10, type=int)
         self.add_argument('--retrieve_only', dest='retrieve_only', default=False, action='store_true')
 
-    def add_argument(self, *args, **kw_args):
-        return self.parser.add_argument(*args, **kw_args)
-
     def check_arguments(self, args):
         for check in self.checks:
             check(args)
 
-    def parse(self):
-        args = self.parser.parse_args()
+    def parse_args(self, *args, **kwargs):
+        args = super().parse_args(*args, **kwargs)
+
         self.check_arguments(args)
 
         args.input_arguments = copy.deepcopy(args)
@@ -107,8 +104,8 @@ class Arguments():
                           condition=(args.rank == 0))
             faiss.omp_set_num_threads(args.nthreads)
 
-        Run.init(args.rank, args.root, args.experiment, args.run)
-        Run._log_args(args)
-        Run.info(args.input_arguments.__dict__, '\n')
+        #Run.init(args.rank, args.root, args.experiment, args.run)
+        #Run._log_args(args)
+        #Run.info(args.input_arguments.__dict__, '\n')
 
         return args

@@ -2,7 +2,7 @@ import os
 import ujson
 import random
 
-from colbert.utils.runs import Run
+from meticulous import Experiment
 from colbert.utils.parser import Arguments
 import colbert.utils.distributed as distributed
 
@@ -20,37 +20,39 @@ def main():
     parser.add_indexing_input()
 
     parser.add_argument('--chunksize', dest='chunksize', default=16.0, required=False, type=float)   # in GiBs
+    Experiment.add_argument_group(parser)
+    meticulous_args = Experiment.extract_meticulous_args(parser)
+    args = parser.parse_args()
+    if args.rank < 1:
+        experiment = Experiment(args=args, **meticulous_args)
 
-    args = parser.parse()
+    args.index_path = os.path.join(args.index_root, args.index_name)
+    assert not os.path.exists(args.index_path), args.index_path
 
-    with Run.context():
-        args.index_path = os.path.join(args.index_root, args.index_name)
-        assert not os.path.exists(args.index_path), args.index_path
+    distributed.barrier(args.rank)
 
-        distributed.barrier(args.rank)
+    if args.rank < 1:
+        create_directory(args.index_root)
+        create_directory(args.index_path)
 
-        if args.rank < 1:
-            create_directory(args.index_root)
-            create_directory(args.index_path)
+    distributed.barrier(args.rank)
 
-        distributed.barrier(args.rank)
+    process_idx = max(0, args.rank)
+    encoder = CollectionEncoder(args, process_idx=process_idx, num_processes=args.nranks)
+    encoder.encode()
 
-        process_idx = max(0, args.rank)
-        encoder = CollectionEncoder(args, process_idx=process_idx, num_processes=args.nranks)
-        encoder.encode()
+    distributed.barrier(args.rank)
 
-        distributed.barrier(args.rank)
+    # Save metadata.
+    if args.rank < 1:
+        metadata_path = os.path.join(args.index_path, 'metadata.json')
+        print_message("Saving (the following) metadata to", metadata_path, "..")
+        print(args.input_arguments)
 
-        # Save metadata.
-        if args.rank < 1:
-            metadata_path = os.path.join(args.index_path, 'metadata.json')
-            print_message("Saving (the following) metadata to", metadata_path, "..")
-            print(args.input_arguments)
+        with open(metadata_path, 'w') as output_metadata:
+            ujson.dump(args.input_arguments.__dict__, output_metadata)
 
-            with open(metadata_path, 'w') as output_metadata:
-                ujson.dump(args.input_arguments.__dict__, output_metadata)
-
-        distributed.barrier(args.rank)
+    distributed.barrier(args.rank)
 
 
 if __name__ == "__main__":
