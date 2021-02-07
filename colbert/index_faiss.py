@@ -6,6 +6,7 @@ from colbert.utils.runs import Run
 from colbert.utils.parser import Arguments
 from colbert.indexing.faiss import index_faiss
 from colbert.indexing.loaders import load_doclens
+from meticulous import Experiment
 
 
 def main():
@@ -17,26 +18,33 @@ def main():
     parser.add_argument('--sample', dest='sample', default=None, type=float)
     parser.add_argument('--slices', dest='slices', default=1, type=int)
 
+    Experiment.add_argument_group(parser)
     args = parser.parse()
+    vargs = {k:v for k, v in vars(args).items()}
+    meticulous_args = {}
+    for arg in ['project_directory', 'experiments_directory', 'experiment_id', 'description', 'resume', 'norecord']:
+        if arg in vargs:
+            meticulous_args[arg] = vargs[arg]
+            del vargs[arg]
+    experiment = Experiment(args=vargs, **meticulous_args)
     assert args.slices >= 1
     assert args.sample is None or (0.0 < args.sample < 1.0), args.sample
 
-    with Run.context():
-        args.index_path = os.path.join(args.index_root, args.index_name)
-        assert os.path.exists(args.index_path), args.index_path
+    args.index_path = os.path.join(args.index_root, args.index_name)
+    assert os.path.exists(args.index_path), args.index_path
 
-        num_embeddings = sum(load_doclens(args.index_path))
-        print("#> num_embeddings =", num_embeddings)
+    num_embeddings = sum(load_doclens(args.index_path))
+    print("#> num_embeddings =", num_embeddings)
 
-        if args.partitions is None:
-            args.partitions = 1 << math.ceil(math.log2(8 * math.sqrt(num_embeddings)))
-            print('\n\n')
-            Run.warn("You did not specify --partitions!")
-            Run.warn("Default computation chooses", args.partitions,
-                     "partitions (for {} embeddings)".format(num_embeddings))
-            print('\n\n')
+    if args.partitions is None:
+        args.partitions = 1 << math.ceil(math.log2(8 * math.sqrt(num_embeddings)))
+        print('\n\n')
+        Run.warn("You did not specify --partitions!")
+        Run.warn("Default computation chooses", args.partitions,
+                 "partitions (for {} embeddings)".format(num_embeddings))
+        print('\n\n')
 
-        index_faiss(args)
+    index_faiss(args)
 
 
 if __name__ == "__main__":
