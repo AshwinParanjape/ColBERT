@@ -86,7 +86,7 @@ def index_faiss(args):
 
         index = prepare_faiss_index(slice_samples_paths, args.partitions, args.sample)
 
-        loaded_parts = queue.Queue(maxsize=0)
+        loaded_parts = queue.Queue(maxsize=1)
 
         def _loader_thread(thread_parts_paths):
             for filenames in grouper(thread_parts_paths, SPAN, fillvalue=None):
