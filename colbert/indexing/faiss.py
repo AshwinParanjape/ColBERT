@@ -52,7 +52,7 @@ def prepare_faiss_index(slice_samples_paths, partitions, sample_fraction=None):
     return index
 
 
-SPAN = 1
+SPAN = 3
 
 
 def index_faiss(args):
