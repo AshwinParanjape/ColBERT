@@ -116,7 +116,7 @@ class FaissIndexGPU():
 
         if self.gpu_index.ntotal > 0:
             self._flush_to_cpu(index, nb, offset)
-        
+
         assert index.ntotal == offset+nb, (index.ntotal, offset+nb, offset, nb)
         print(f"add(.) time: %.3f s \t\t--\t\t index.ntotal = {index.ntotal}" % (time.time() - t0))
 
@@ -130,7 +130,10 @@ class FaissIndexGPU():
             # index_src.copy_subset_to(index, 0, 0, nb)  # original
             index_src.copy_subset_to(index, 0, offset, offset+nb)
             index_src_gpu.reset()
+            print("Finished memory reset")
             index_src_gpu.reserveMemory(self.max_add)
 
         if self.ngpu > 1:
+            print("Starting sync_with_shard_indexes")
             self.gpu_index.sync_with_shard_indexes()
+            print("Finished sync_with_shard_indexes")
