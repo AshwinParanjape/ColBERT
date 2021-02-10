@@ -2,7 +2,6 @@ import os
 
 from contextlib import contextmanager
 from colbert.utils.utils import print_message, NullContextManager
-from colbert.utils.runs import Run
 
 
 class RankingLogger():
