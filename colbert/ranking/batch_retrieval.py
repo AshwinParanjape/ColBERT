@@ -18,7 +18,7 @@ def batch_retrieve(args):
     faiss_index = FaissIndex(args.index_path, args.faiss_index_path, args.nprobe, args.part_range)
     inference = ModelInference(args.colbert, amp=args.amp)
 
-    ranking_logger = RankingLogger(args.curexpdir, qrels=None)
+    ranking_logger = RankingLogger(args.output_path, qrels=None)
 
     with ranking_logger.context('unordered.tsv', also_save_annotations=False) as rlogger:
         queries = args.queries
