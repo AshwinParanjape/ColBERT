@@ -6,7 +6,6 @@ import threading
 
 from collections import defaultdict
 
-from colbert.utils.runs import Run
 from colbert.modeling.inference import ModelInference
 from colbert.evaluation.ranking_logger import RankingLogger
 
@@ -99,7 +98,7 @@ def batch_rerank(args):
     with torch.no_grad():
         score_by_range(positions, loaded_parts, all_query_embeddings, all_query_rankings, all_pids)
 
-    ranking_logger = RankingLogger(Run.path, qrels=None, log_scores=args.log_scores)
+    ranking_logger = RankingLogger(args.output_path, qrels=None, log_scores=args.log_scores)
 
     with ranking_logger.context('ranking.tsv', also_save_annotations=False) as rlogger:
         with torch.no_grad():
