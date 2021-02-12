@@ -44,6 +44,7 @@ def main():
     args.colbert, args.checkpoint = load_colbert(args)
 
     args.qrels = load_qrels(args.qrels)
+    args.queries = load_queries(args.queries)
 
 
     args.index_path = os.path.join(args.index_root, args.index_name)

@@ -91,8 +91,6 @@ def load_topK(topK_path):
 
 
 def load_topK_pids(topK_path, qrels, batch_size=10_000):
-
-
     with open(topK_path) as f:
         grouped_by_qid = groupby(f, lambda line: line.strip().split('\t')[0])
         last_qid = None
@@ -104,7 +102,7 @@ def load_topK_pids(topK_path, qrels, batch_size=10_000):
             print_message("#> Loading the top-k PIDs per query from", topK_path, "for batch", batch_idx)
             line_idx = 0
 
-            for qid, lines in batch:
+            for _qid, lines in batch:
                 for line in lines:
                     if line_idx and line_idx % (10*1000*1000) == 0:
                         print(line_idx, end=' ', flush=True)

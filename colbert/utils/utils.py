@@ -88,15 +88,14 @@ def create_directory(path):
         os.makedirs(path)
 
 def batch_iter(iterable, size):
-"""returns an iterator over batches, each batch an iterator itself"""
+    """returns an iterator over batches, each batch an iterator itself"""
     sourceiter = iter(iterable)
     while True:
-	batchiter = itertools.islice(sourceiter, size)
-	try:
-	    yield itertools.chain([next(batchiter)], batchiter)
-	except StopIteration:
-	    return
-
+        batchiter = itertools.islice(sourceiter, size)
+        try:
+            yield itertools.chain([next(batchiter)], batchiter)
+        except StopIteration:
+            return
 
 def batch(group, bsize, provide_offset=False):
     offset = 0
