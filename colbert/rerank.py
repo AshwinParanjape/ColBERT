@@ -43,9 +43,8 @@ def main():
 
     args.colbert, args.checkpoint = load_colbert(args)
 
-    args.queries = load_queries(args.queries)
     args.qrels = load_qrels(args.qrels)
-    args.topK_pids, args.qrels = load_topK_pids(args.topK, qrels=args.qrels)
+
 
     args.index_path = os.path.join(args.index_root, args.index_name)
     args.output_path = experiment.curexpdir

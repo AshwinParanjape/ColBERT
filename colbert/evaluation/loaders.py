@@ -5,9 +5,11 @@ import random
 
 from collections import defaultdict, OrderedDict
 
+from itertools import groupby
+
 from colbert.parameters import DEVICE
 from colbert.modeling.colbert import ColBERT
-from colbert.utils.utils import print_message, load_checkpoint
+from colbert.utils.utils import print_message, load_checkpoint, batch_iter
 from colbert.evaluation.load_model import load_model
 from colbert.utils.runs import Run
 
@@ -88,66 +90,75 @@ def load_topK(topK_path):
     return queries, topK_docs, topK_pids
 
 
-def load_topK_pids(topK_path, qrels):
-    topK_pids = defaultdict(list)
-    topK_positives = defaultdict(list)
+def load_topK_pids(topK_path, qrels, batch_size=10_000):
 
-    print_message("#> Loading the top-k PIDs per query from", topK_path, "...")
 
     with open(topK_path) as f:
-        for line_idx, line in enumerate(f):
-            if line_idx and line_idx % (10*1000*1000) == 0:
-                print(line_idx, end=' ', flush=True)
+        grouped_by_qid = groupby(f, lambda line: line.strip().split('\t')[0])
+        last_qid = None
+        last_qid_pids = None
+        for batch_idx, batch in enumerate(batch_iter(grouped_by_qid, batch_size)):
+            topK_pids = defaultdict(list)
+            topK_positives = defaultdict(list)
 
-            qid, pid, *rest = line.strip().split('\t')
-            qid, pid = int(qid), int(pid)
+            print_message("#> Loading the top-k PIDs per query from", topK_path, "for batch", batch_idx)
+            line_idx = 0
 
-            topK_pids[qid].append(pid)
+            for qid, lines in batch:
+                for line in lines:
+                    if line_idx and line_idx % (10*1000*1000) == 0:
+                        print(line_idx, end=' ', flush=True)
 
-            assert len(rest) in [1, 2, 3]
+                    qid, pid, *rest = line.strip().split('\t')
+                    qid, pid = int(qid), int(pid)
 
-            if len(rest) > 1:
-                *_, label = rest
-                label = int(label)
-                assert label in [0, 1]
+                    topK_pids[qid].append(pid)
 
-                if label >= 1:
-                    topK_positives[qid].append(pid)
+                    assert len(rest) in [1, 2, 3]
 
-        print()
+                    if len(rest) > 1:
+                        *_, label = rest
+                        label = int(label)
+                        assert label in [0, 1]
 
-    assert all(len(topK_pids[qid]) == len(set(topK_pids[qid])) for qid in topK_pids)
-    assert all(len(topK_positives[qid]) == len(set(topK_positives[qid])) for qid in topK_positives)
+                        if label >= 1:
+                            topK_positives[qid].append(pid)
+                    line_idx+=1
 
-    # Make them sets for fast lookups later
-    topK_positives = {qid: set(topK_positives[qid]) for qid in topK_positives}
+            print("Last qid for batch is", qid, "with", len(topK_pids[qid]), "pids")
 
-    Ks = [len(topK_pids[qid]) for qid in topK_pids]
+            assert all(len(topK_pids[qid]) == len(set(topK_pids[qid])) for qid in topK_pids)
+            assert all(len(topK_positives[qid]) == len(set(topK_positives[qid])) for qid in topK_positives)
 
-    print_message("#> max(Ks) =", max(Ks), ", avg(Ks) =", round(sum(Ks) / len(Ks), 2))
-    print_message("#> Loaded the top-k per query for", len(topK_pids), "unique queries.\n")
+            # Make them sets for fast lookups later
+            topK_positives = {qid: set(topK_positives[qid]) for qid in topK_positives}
 
-    if len(topK_positives) == 0:
-        topK_positives = None
-    else:
-        assert len(topK_pids) >= len(topK_positives)
+            Ks = [len(topK_pids[qid]) for qid in topK_pids]
 
-        for qid in set.difference(set(topK_pids.keys()), set(topK_positives.keys())):
-            topK_positives[qid] = []
+            print_message("#> max(Ks) =", max(Ks), ", avg(Ks) =", round(sum(Ks) / len(Ks), 2))
+            print_message("#> Loaded the top-k per query for", len(topK_pids), "unique queries.\n")
 
-        assert len(topK_pids) == len(topK_positives)
+            if len(topK_positives) == 0:
+                topK_positives = None
+            else:
+                assert len(topK_pids) >= len(topK_positives)
 
-        avg_positive = round(sum(len(topK_positives[qid]) for qid in topK_positives) / len(topK_pids), 2)
+                for qid in set.difference(set(topK_pids.keys()), set(topK_positives.keys())):
+                    topK_positives[qid] = []
 
-        print_message("#> Concurrently got annotations for", len(topK_positives), "unique queries with",
-                      avg_positive, "positives per query on average.\n")
+                assert len(topK_pids) == len(topK_positives)
 
-    assert qrels is None or topK_positives is None, "Cannot have both qrels and an annotated top-K file!"
+                avg_positive = round(sum(len(topK_positives[qid]) for qid in topK_positives) / len(topK_pids), 2)
 
-    if topK_positives is None:
-        topK_positives = qrels
+                print_message("#> Concurrently got annotations for", len(topK_positives), "unique queries with",
+                              avg_positive, "positives per query on average.\n")
 
-    return topK_pids, topK_positives
+            assert qrels is None or topK_positives is None, "Cannot have both qrels and an annotated top-K file!"
+
+            if topK_positives is None:
+                topK_positives = qrels
+
+            yield topK_pids, topK_positives
 
 
 def load_collection(collection_path):

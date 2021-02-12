@@ -69,59 +69,60 @@ def score_by_range(positions, loaded_parts, all_query_embeddings, all_query_rank
             all_query_rankings[0][query_index].append(pid)
             all_query_rankings[1][query_index].append(score)
 
-
 def batch_rerank(args):
     positions, loaded_parts, thread = prepare_ranges(args.index_path, args.dim, args.step, args.part_range)
 
     inference = ModelInference(args.colbert, amp=args.amp)
-    queries, topK_pids = args.queries, args.topK_pids
+    queries = args.queries
+    for args.topK_pids, args.qrels in load_topK_pids(args.topK, qrels=args.qrels, batch_size=100_000_000):
+        batch_queries = {k: queries[v] for k in topK_pids.keys()}
 
-    with torch.no_grad():
-        queries_in_order = list(queries.values())
-
-        print_message(f"#> Encoding all {len(queries_in_order)} queries in batches...")
-
-        all_query_embeddings = inference.queryFromText(queries_in_order, bsize=512, to_cpu=True)
-        all_query_embeddings = all_query_embeddings.to(dtype=torch.float16).permute(0, 2, 1).contiguous()
-
-    for qid in queries:
-        """
-        Since topK_pids is a defaultdict, make sure each qid *has* actual PID information (even if empty).
-        """
-        assert qid in topK_pids, qid
-
-    all_pids = flatten([[(query_index, pid) for pid in topK_pids[qid]] for query_index, qid in enumerate(queries)])
-    all_query_rankings = [defaultdict(list), defaultdict(list)]
-
-    print_message(f"#> Will process {len(all_pids)} query--document pairs in total.")
-
-    with torch.no_grad():
-        score_by_range(positions, loaded_parts, all_query_embeddings, all_query_rankings, all_pids)
-
-    ranking_logger = RankingLogger(args.output_path, qrels=None, log_scores=args.log_scores)
-
-    with ranking_logger.context('ranking.tsv', also_save_annotations=False) as rlogger:
         with torch.no_grad():
-            for query_index, qid in enumerate(queries):
-                if query_index % 1000 == 0:
-                    print_message("#> Logging query #{} (qid {}) now...".format(query_index, qid))
+            queries_in_order = list(batch_queries.values())
 
-                pids = all_query_rankings[0][query_index]
-                scores = all_query_rankings[1][query_index]
+            print_message(f"#> Encoding all {len(queries_in_order)} queries in batches...")
 
-                K = min(MAX_DEPTH_LOGGED, len(scores))
+            all_query_embeddings = inference.queryFromText(queries_in_order, bsize=512, to_cpu=True)
+            all_query_embeddings = all_query_embeddings.to(dtype=torch.float16).permute(0, 2, 1).contiguous()
 
-                if K == 0:
-                    continue
+        for qid in batch_queries:
+            """
+            Since topK_pids is a defaultdict, make sure each qid *has* actual PID information (even if empty).
+            """
+            assert qid in topK_pids, qid
 
-                scores_topk = torch.tensor(scores).topk(K, largest=True, sorted=True)
+        all_pids = flatten([[(query_index, pid) for pid in topK_pids[qid]] for query_index, qid in enumerate(batch_queries)])
+        all_query_rankings = [defaultdict(list), defaultdict(list)]
 
-                pids, scores = torch.tensor(pids)[scores_topk.indices].tolist(), scores_topk.values.tolist()
+        print_message(f"#> Will process {len(all_pids)} query--document pairs in total.")
 
-                ranking = [(score, pid, None) for pid, score in zip(pids, scores)]
-                assert len(ranking) <= MAX_DEPTH_LOGGED, (len(ranking), MAX_DEPTH_LOGGED)
+        with torch.no_grad():
+            score_by_range(positions, loaded_parts, all_query_embeddings, all_query_rankings, all_pids)
 
-                rlogger.log(qid, ranking, is_ranked=True, print_positions=[1, 2] if query_index % 100 == 0 else [])
+        ranking_logger = RankingLogger(args.output_path, qrels=None, log_scores=args.log_scores)
+
+        with ranking_logger.context('ranking.tsv', also_save_annotations=False) as rlogger:
+            with torch.no_grad():
+                for query_index, qid in enumerate(batch_queries):
+                    if query_index % 1000 == 0:
+                        print_message("#> Logging query #{} (qid {}) now...".format(query_index, qid))
+
+                    pids = all_query_rankings[0][query_index]
+                    scores = all_query_rankings[1][query_index]
+
+                    K = min(MAX_DEPTH_LOGGED, len(scores))
+
+                    if K == 0:
+                        continue
+
+                    scores_topk = torch.tensor(scores).topk(K, largest=True, sorted=True)
+
+                    pids, scores = torch.tensor(pids)[scores_topk.indices].tolist(), scores_topk.values.tolist()
+
+                    ranking = [(score, pid, None) for pid, score in zip(pids, scores)]
+                    assert len(ranking) <= MAX_DEPTH_LOGGED, (len(ranking), MAX_DEPTH_LOGGED)
+
+                    rlogger.log(qid, ranking, is_ranked=True, print_positions=[1, 2] if query_index % 100 == 0 else [])
 
     print('\n\n')
     print(ranking_logger.filename)
