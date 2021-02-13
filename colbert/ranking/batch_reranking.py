@@ -77,7 +77,7 @@ def batch_rerank(args):
     print_message(queries)
     ranking_logger = RankingLogger(args.output_path, qrels=None, log_scores=args.log_scores)
     with ranking_logger.context('ranking.tsv', also_save_annotations=False) as rlogger:
-        for topK_pids, qrels in load_topK_pids(args.topK, qrels=args.qrels, batch_size=10_000):
+        for topK_pids, qrels in load_topK_pids(args.topK, qrels=args.qrels, batch_size=args.query_batch_size):
             positions, loaded_parts, thread = prepare_ranges(args.index_path, args.dim, args.step, args.part_range)
             batch_queries = {k: queries[k] for k in topK_pids}
             with torch.no_grad():

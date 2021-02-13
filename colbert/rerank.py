@@ -25,6 +25,7 @@ def main():
     parser.add_argument('--log-scores', dest='log_scores', default=False, action='store_true')
     parser.add_argument('--batch', dest='batch', default=False, action='store_true')
     parser.add_argument('--depth', dest='depth', default=1000, type=int)
+    parser.add_argument('--query-batch-size', default=10000, type=int)
 
     Experiment.add_argument_group(parser)
     args = parser.parse()
