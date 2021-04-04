@@ -16,7 +16,7 @@ def batch_retrieve(args):
     assert args.retrieve_only, "TODO: Combine batch (multi-query) retrieval with batch re-ranking"
 
     faiss_index = FaissIndex(args.index_path, args.faiss_index_path, args.nprobe, args.part_range)
-    inference = ModelInference(args.colbert, amp=args.amp)
+    inference = ModelInference(args.colbert, amp=args.amp, truncate_query_from_start=args.truncate_query_from_start)
 
     ranking_logger = RankingLogger(args.output_path, qrels=None)
 
