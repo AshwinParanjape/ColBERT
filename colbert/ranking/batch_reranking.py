@@ -111,7 +111,7 @@ def batch_rerank(args):
                     pids = all_query_rankings[0][query_index]
                     scores = all_query_rankings[1][query_index]
 
-                    K = min(MAX_DEPTH_LOGGED, len(scores))
+                    K = min(args.depth, len(scores))
 
                     if K == 0:
                         continue
@@ -121,7 +121,7 @@ def batch_rerank(args):
                     pids, scores = torch.tensor(pids)[scores_topk.indices].tolist(), scores_topk.values.tolist()
 
                     ranking = [(score, pid, None) for pid, score in zip(pids, scores)]
-                    assert len(ranking) <= MAX_DEPTH_LOGGED, (len(ranking), MAX_DEPTH_LOGGED)
+                    assert len(ranking) <= args.depth, (len(ranking), args.depth)
 
                     rlogger.log(qid, ranking, is_ranked=True, print_positions=[1, 2] if query_index % 100 == 0 else [])
 
