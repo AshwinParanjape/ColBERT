@@ -72,9 +72,8 @@ def score_by_range(positions, loaded_parts, all_query_embeddings, all_query_rank
 
 def batch_rerank(args):
 
-    inference = ModelInference(args.colbert, amp=args.amp)
+    inference = ModelInference(args.colbert, amp=args.amp, truncate_query_from_start=args.truncate_query_from_start )
     queries = args.queries
-    print_message(queries)
     ranking_logger = RankingLogger(args.output_path, qrels=None, log_scores=args.log_scores)
     with ranking_logger.context('ranking.tsv', also_save_annotations=False) as rlogger:
         for topK_pids, qrels in load_topK_pids(args.topK, qrels=args.qrels, batch_size=args.query_batch_size):
@@ -85,7 +84,7 @@ def batch_rerank(args):
 
                 print_message(f"#> Encoding all {len(queries_in_order)} queries in batches...")
 
-                all_query_embeddings = inference.queryFromText(queries_in_order, bsize=512, to_cpu=True, truncate_query_from_start=args.truncate_query_from_start)
+                all_query_embeddings = inference.queryFromText(queries_in_order, bsize=512, to_cpu=True)
                 all_query_embeddings = all_query_embeddings.to(dtype=torch.float16).permute(0, 2, 1).contiguous()
 
             for qid in batch_queries:

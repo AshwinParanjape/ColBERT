@@ -35,6 +35,7 @@ class ModelInference():
             return torch.cat(batches)
 
         input_ids, attention_mask = self.query_tokenizer.tensorize(queries)
+        print("Tokenized the queries")
         return self.query(input_ids, attention_mask)
 
     def docFromText(self, docs, bsize=None, keep_dims=True, to_cpu=False):
