@@ -85,7 +85,7 @@ def batch_rerank(args):
 
                 print_message(f"#> Encoding all {len(queries_in_order)} queries in batches...")
 
-                all_query_embeddings = inference.queryFromText(queries_in_order, bsize=512, to_cpu=True)
+                all_query_embeddings = inference.queryFromText(queries_in_order, bsize=512, to_cpu=True, truncate_query_from_start=args.truncate_query_from_start)
                 all_query_embeddings = all_query_embeddings.to(dtype=torch.float16).permute(0, 2, 1).contiguous()
 
             for qid in batch_queries:
