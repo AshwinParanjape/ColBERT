@@ -17,7 +17,7 @@ from colbert.ranking.index_part import IndexPart
 MAX_DEPTH_LOGGED = 1000  # TODO: Use args.depth
 
 
-def prepare_ranges(index_path, dim, step, part_range):
+def prepare_ranges(index_path, dim, step, part_range, queue_maxsize):
     print_message("#> Launching a separate thread to load index parts asynchronously.")
     parts, _, _ = get_parts(index_path)
 
@@ -26,7 +26,7 @@ def prepare_ranges(index_path, dim, step, part_range):
     if part_range is not None:
         positions = positions[part_range.start: part_range.stop]
 
-    loaded_parts = queue.Queue(maxsize=1)
+    loaded_parts = queue.Queue(maxsize=queue_maxsize)
 
     def _loader_thread(index_path, dim, positions):
         for offset, endpos in positions:
@@ -77,7 +77,7 @@ def batch_rerank(args):
     ranking_logger = RankingLogger(args.output_path, qrels=None, log_scores=args.log_scores)
     with ranking_logger.context('ranking.tsv', also_save_annotations=False) as rlogger:
         for topK_pids, qrels in load_topK_pids(args.topK, qrels=args.qrels, batch_size=args.query_batch_size):
-            positions, loaded_parts, thread = prepare_ranges(args.index_path, args.dim, args.step, args.part_range)
+            positions, loaded_parts, thread = prepare_ranges(args.index_path, args.dim, args.step, args.part_range,args.queue_maxsize)
             batch_queries = {k: queries[k] for k in topK_pids}
             with torch.no_grad():
                 queries_in_order = list(batch_queries.values())

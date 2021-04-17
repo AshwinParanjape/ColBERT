@@ -26,6 +26,7 @@ def main():
     parser.add_argument('--batch', dest='batch', default=False, action='store_true')
     parser.add_argument('--depth', dest='depth', default=1000, type=int)
     parser.add_argument('--query-batch-size', default=10000, type=int)
+    parser.add_argument('--queue_maxsize', default=1, type=int)
     parser.add_argument('--truncate_query_from_start', default=False, action='store_true')
 
     Experiment.add_argument_group(parser)
