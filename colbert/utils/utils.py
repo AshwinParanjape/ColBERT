@@ -72,8 +72,8 @@ def load_checkpoint(path, model, optimizer=None, do_print=True):
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'], strict=False)
 
     if do_print:
-        print_message("#> checkpoint['epoch'] =", checkpoint['epoch'])
-        print_message("#> checkpoint['batch'] =", checkpoint['batch'])
+        if 'epoch' in checkpoint: print_message("#> checkpoint['epoch'] =", checkpoint['epoch'])
+        if 'batch' in checkpoint: print_message("#> checkpoint['batch'] =", checkpoint['batch'])
 
     return checkpoint
 
